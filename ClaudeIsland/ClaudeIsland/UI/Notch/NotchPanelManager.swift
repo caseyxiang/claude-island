@@ -11,6 +11,7 @@ final class NotchPanelManager {
     // MARK: - State
 
     var isExpanded = false
+    var isPinned = false
     var notchSize: CGSize = CGSize(width: 200, height: 32)
     var screenFrame: CGRect = .zero
 

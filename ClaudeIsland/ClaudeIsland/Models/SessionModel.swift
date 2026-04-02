@@ -3,36 +3,36 @@ import Foundation
 // MARK: - Session Status
 
 enum SessionStatus: String, Codable, CaseIterable {
-    case running
-    case waitingPermission
-    case waitingAnswer
-    case stopped
-    case done
+    case working          // Claude is actively processing
+    case idle             // Claude finished, waiting for user input
+    case waitingPermission // Claude needs tool permission
+    case waitingAnswer    // Claude asked user a question
+    case done             // Process exited
 
     var displayName: String {
         switch self {
-        case .running: "Running"
+        case .working: "Working"
+        case .idle: "Idle"
         case .waitingPermission: "Needs Permission"
         case .waitingAnswer: "Needs Answer"
-        case .stopped: "Stopped"
         case .done: "Done"
         }
     }
 
     var iconName: String {
         switch self {
-        case .running: "circle.fill"
-        case .waitingPermission: "exclamationmark.circle.fill"
-        case .waitingAnswer: "questionmark.circle.fill"
-        case .stopped: "stop.circle.fill"
+        case .working: "gearshape.fill"
+        case .idle: "moon.zzz.fill"
+        case .waitingPermission: "exclamationmark.bubble.fill"
+        case .waitingAnswer: "questionmark.bubble.fill"
         case .done: "checkmark.circle.fill"
         }
     }
 
     var isActive: Bool {
         switch self {
-        case .running, .waitingPermission, .waitingAnswer: true
-        case .stopped, .done: false
+        case .working, .idle, .waitingPermission, .waitingAnswer: true
+        case .done: false
         }
     }
 
@@ -58,6 +58,9 @@ struct AgentSession: Identifiable, Equatable {
     var transcriptPath: String?
     var updatedAt: Date
     var hasUnreadCompletion: Bool = false
+    var lastUserPrompt: String?
+    var lastAssistantMessage: String?
+    var liveResponse: String?  // streaming response while working
 
     var workspaceName: String {
         URL(fileURLWithPath: cwd).lastPathComponent
@@ -107,7 +110,7 @@ struct AgentSession: Identifiable, Equatable {
         self.cwd = cwd
         self.startedAt = startedAt
         self.entrypoint = entrypoint
-        self.status = .running
+        self.status = .idle
         self.updatedAt = Date()
     }
 }

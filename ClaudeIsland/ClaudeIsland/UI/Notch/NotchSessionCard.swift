@@ -4,6 +4,8 @@ import SwiftUI
 struct NotchSessionCard: View {
     let session: AgentSession
     var onTap: (() -> Void)?
+    var onApprove: (() -> Void)?
+    var onDeny: (() -> Void)?
     @State private var breathe = false
     @State private var isHovering = false
 
@@ -45,51 +47,98 @@ struct NotchSessionCard: View {
                     .foregroundStyle(.white.opacity(0.35))
             }
 
-            // Row 3: Pending prompt (permission / question)
-            if let prompt = session.pendingPrompt {
-                Text("> \(prompt)")
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(.orange.opacity(0.8))
-                    .lineLimit(2)
+            // Row 3: Context info based on state
+            if session.status.needsAttention {
+                // Permission / question: show user prompt for context, then the pending action
+                if let userPrompt = session.lastUserPrompt, !userPrompt.isEmpty {
+                    HStack(alignment: .top, spacing: 4) {
+                        Text("You:")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(claudeOrange.opacity(0.8))
+                        Text(userPrompt)
+                            .font(.system(size: 9))
+                            .foregroundStyle(.white.opacity(0.5))
+                            .lineLimit(1)
+                    }
+                }
+                if let prompt = session.pendingPrompt {
+                    Text("> \(prompt)")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(.orange.opacity(0.8))
+                        .lineLimit(2)
+                }
+            } else if session.status == .working {
+                // Working: show prompt + live streaming response
+                if let userPrompt = session.lastUserPrompt, !userPrompt.isEmpty {
+                    HStack(alignment: .top, spacing: 4) {
+                        Text("You:")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(claudeOrange.opacity(0.8))
+                        Text(userPrompt)
+                            .font(.system(size: 9))
+                            .foregroundStyle(.white.opacity(0.5))
+                            .lineLimit(1)
+                    }
+                }
+                if let live = session.liveResponse, !live.isEmpty {
+                    Text(live)
+                        .font(.system(size: 9))
+                        .foregroundStyle(.green.opacity(0.6))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else if session.hasUnreadCompletion || session.status == .idle {
+                // Completed/idle: show last prompt and final response
+                if let userPrompt = session.lastUserPrompt, !userPrompt.isEmpty {
+                    HStack(alignment: .top, spacing: 4) {
+                        Text("You:")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(claudeOrange.opacity(0.7))
+                        Text(userPrompt)
+                            .font(.system(size: 9))
+                            .foregroundStyle(.white.opacity(0.4))
+                            .lineLimit(1)
+                    }
+                }
+                if let response = session.lastAssistantMessage, !response.isEmpty {
+                    Text(response)
+                        .font(.system(size: 9))
+                        .foregroundStyle(.green.opacity(0.6))
+                        .lineLimit(3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
 
-            // Row 4: Action buttons
-            if session.status == .waitingPermission {
+            // Row 4: Action buttons (both permission and question show Jump)
+            if session.status.needsAttention {
                 HStack(spacing: 8) {
-                    Button {
-                        onTap?()  // Jump to terminal to approve
-                    } label: {
-                        Text("Allow")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(.black)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 5)
-                            .background(claudeOrange)
-                            .cornerRadius(6)
-                    }
-                    .buttonStyle(.plain)
+                    if session.status == .waitingPermission {
+                        Button { onApprove?() } label: {
+                            Text("Allow")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(.black)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 5)
+                                .background(Color.green)
+                                .cornerRadius(6)
+                        }
+                        .buttonStyle(.plain)
 
-                    Button {
-                        onTap?()  // Jump to terminal to deny
-                    } label: {
-                        Text("Deny")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.7))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 5)
-                            .background(.white.opacity(0.08))
-                            .cornerRadius(6)
+                        Button { onDeny?() } label: {
+                            Text("Deny")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.7))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 5)
+                                .background(.red.opacity(0.3))
+                                .cornerRadius(6)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
 
                     Spacer()
 
-                    jumpButton
-                }
-                .padding(.top, 2)
-            } else if session.status == .waitingAnswer {
-                HStack {
-                    Spacer()
                     jumpButton
                 }
                 .padding(.top, 2)
@@ -110,38 +159,10 @@ struct NotchSessionCard: View {
         .onAppear { breathe = true }
     }
 
-    // MARK: - Status Dot
+    // MARK: - Status Icon
 
-    @ViewBuilder
     private var statusDot: some View {
-        if session.hasUnreadCompletion {
-            // Breathing green glow — task just completed, unread
-            Circle()
-                .fill(.green)
-                .frame(width: 8, height: 8)
-                .shadow(color: .green.opacity(0.8), radius: breathe ? 6 : 2)
-                .opacity(breathe ? 1.0 : 0.4)
-                .animation(
-                    .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
-                    value: breathe
-                )
-        } else if session.status.needsAttention {
-            // Pulsing orange/yellow — needs user action
-            Circle()
-                .fill(statusColor)
-                .frame(width: 8, height: 8)
-                .shadow(color: statusColor.opacity(0.8), radius: breathe ? 6 : 2)
-                .opacity(breathe ? 1.0 : 0.5)
-                .animation(
-                    .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
-                    value: breathe
-                )
-        } else {
-            // Stable green — running normally
-            Circle()
-                .fill(.green)
-                .frame(width: 7, height: 7)
-        }
+        PixelIconView(session: session, size: 28)
     }
 
     // MARK: - Jump Button
@@ -169,10 +190,9 @@ struct NotchSessionCard: View {
 
     private var statusColor: Color {
         switch session.status {
-        case .running: .green
-        case .waitingPermission: .orange
-        case .waitingAnswer: .yellow
-        case .stopped: .green.opacity(0.7)
+        case .working: .green
+        case .idle: .gray
+        case .waitingPermission, .waitingAnswer: .orange
         case .done: .gray
         }
     }
@@ -180,10 +200,9 @@ struct NotchSessionCard: View {
     private var statusText: String {
         if session.hasUnreadCompletion { return "COMPLETED" }
         switch session.status {
-        case .running: return "RUNNING"
-        case .waitingPermission: return "NEEDS INPUT"
-        case .waitingAnswer: return "QUESTION"
-        case .stopped: return "DONE"
+        case .working: return "WORKING"
+        case .idle: return "IDLE"
+        case .waitingPermission, .waitingAnswer: return "NEEDS INPUT"
         case .done: return "DONE"
         }
     }

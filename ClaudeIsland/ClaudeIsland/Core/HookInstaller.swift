@@ -112,7 +112,7 @@ struct HookInstaller {
         let alreadyExists = eventArray.contains { entry in
             guard let hooksList = entry["hooks"] as? [[String: Any]] else { return false }
             return hooksList.contains { h in
-                (h["command"] as? String)?.contains("ClaudeIsland") == true
+                (h["command"] as? String)?.contains("claude-island") == true
             }
         }
         guard !alreadyExists else { return }
@@ -136,7 +136,7 @@ struct HookInstaller {
         let alreadyExists = eventArray.contains { entry in
             guard let hooksList = entry["hooks"] as? [[String: Any]] else { return false }
             return hooksList.contains { h in
-                (h["command"] as? String)?.contains("ClaudeIsland") == true
+                (h["command"] as? String)?.contains("claude-island") == true
             }
         }
         guard !alreadyExists else { return }
@@ -169,7 +169,7 @@ struct HookInstaller {
             eventArray.removeAll { entry in
                 guard let hooksList = entry["hooks"] as? [[String: Any]] else { return false }
                 return hooksList.contains { h in
-                    (h["command"] as? String)?.contains("ClaudeIsland") == true
+                    (h["command"] as? String)?.contains("claude-island") == true
                 }
             }
             if eventArray.isEmpty {
@@ -191,7 +191,7 @@ struct HookInstaller {
         return eventArray.contains { entry in
             guard let hooksList = entry["hooks"] as? [[String: Any]] else { return false }
             return hooksList.contains { h in
-                (h["command"] as? String)?.contains("ClaudeIsland") == true
+                (h["command"] as? String)?.contains("claude-island") == true
             }
         }
     }

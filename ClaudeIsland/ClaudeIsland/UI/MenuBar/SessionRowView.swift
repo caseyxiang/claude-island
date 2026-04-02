@@ -49,7 +49,7 @@ struct SessionRowView: View {
     @ViewBuilder
     private var statusIcon: some View {
         switch session.status {
-        case .running:
+        case .working, .idle:
             Circle()
                 .fill(.green)
                 .frame(width: 10, height: 10)
@@ -75,7 +75,7 @@ struct SessionRowView: View {
                 }
                 .onAppear { pulseAnimation = true }
 
-        case .stopped, .done:
+        case .done:
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 14))
                 .foregroundStyle(.green.opacity(0.7))
@@ -89,7 +89,7 @@ struct SessionRowView: View {
     @ViewBuilder
     private var statusLine: some View {
         switch session.status {
-        case .running:
+        case .working, .idle:
             Text("Running")
                 .font(.caption)
                 .foregroundStyle(.green)
@@ -106,7 +106,7 @@ struct SessionRowView: View {
                 .foregroundStyle(.yellow)
                 .lineLimit(2)
 
-        case .stopped:
+        case .done:
             Text("Task completed")
                 .font(.caption)
                 .foregroundStyle(.secondary)
